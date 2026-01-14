@@ -1,5 +1,14 @@
-# jwtdecode
+# JWT Decoder
 
-A wbtl.app tool.
+Decode and inspect JWT tokens without sending them anywhere.
 
-Visit: https://jwtdecode.wbtl.app
+https://jwtdecode.wbtl.app
+
+## Output
+
+Production files are in the `dist/` folder:
+- `dist/index.html` - Main application
+
+## Deploy
+
+Copy the contents of `dist/` to any static hosting service.

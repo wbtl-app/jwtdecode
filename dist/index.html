@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JWT Decoder - wbtl.app</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%237ed321'/><stop offset='100%25' stop-color='%236dc210'/></linearGradient></defs><rect width='32' height='32' rx='6' fill='url(%23g)'/><g transform='translate(4,4)' stroke='white' stroke-width='2' stroke-linecap='round' fill='none'><circle cx='8' cy='8' r='3'/><line x1='10.5' y1='10.5' x2='18' y2='18'/><line x1='15' y1='18' x2='18' y2='15'/></g></svg>">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f7;
+      --text: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --border: #d2d2d7;
+      --toggle-bg: #e5e5e5;
+      --toggle-knob: #ffffff;
+      --tool-gradient-start: #7ed321;
+      --tool-gradient-end: #6dc210;
+      --success: #34c759;
+      --warning: #ff9500;
+      --error: #ff3b30;
+      --json-key: #0071e3;
+      --json-string: #c41a16;
+      --json-number: #1c00cf;
+      --json-boolean: #aa0d91;
+      --json-null: #6e6e73;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #000000;
+        --bg-secondary: #1c1c1e;
+        --text: #f5f5f7;
+        --text-secondary: #98989d;
+        --accent: #2997ff;
+        --accent-hover: #40a9ff;
+        --border: #38383a;
+        --toggle-bg: #3a3a3c;
+        --toggle-knob: #ffffff;
+        --json-key: #2997ff;
+        --json-string: #fc6a5d;
+        --json-number: #d0bf69;
+        --json-boolean: #ff7ab2;
+        --json-null: #98989d;
+      }
+    }
+
+    [data-theme="dark"] {
+      --bg: #000000;
+      --bg-secondary: #1c1c1e;
+      --text: #f5f5f7;
+      --text-secondary: #98989d;
+      --accent: #2997ff;
+      --accent-hover: #40a9ff;
+      --border: #38383a;
+      --toggle-bg: #3a3a3c;
+      --toggle-knob: #ffffff;
+      --json-key: #2997ff;
+      --json-string: #fc6a5d;
+      --json-number: #d0bf69;
+      --json-boolean: #ff7ab2;
+      --json-null: #98989d;
+    }
+
+    [data-theme="light"] {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f7;
+      --text: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --accent: #0071e3;
+      --accent-hover: #0077ed;
+      --border: #d2d2d7;
+      --toggle-bg: #e5e5e5;
+      --toggle-knob: #ffffff;
+      --json-key: #0071e3;
+      --json-string: #c41a16;
+      --json-number: #1c00cf;
+      --json-boolean: #aa0d91;
+      --json-null: #6e6e73;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .tool-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--tool-gradient-start), var(--tool-gradient-end));
+    }
+
+    .tool-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .tool-name {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .back-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s ease;
+    }
+
+    .back-link:hover {
+      color: var(--accent);
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .theme-toggle svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--text-secondary);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--toggle-bg);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: var(--toggle-knob);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.2s ease;
+    }
+
+    [data-theme="dark"] .toggle-switch::after,
+    :root:not([data-theme="light"]) .toggle-switch::after {
+      transform: translateX(20px);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) .toggle-switch::after {
+        transform: translateX(0);
+      }
+    }
+
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    .content {
+      width: 100%;
+    }
+
+    .input-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .input-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .input-label span {
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .input-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .jwt-input {
+      width: 100%;
+      min-height: 100px;
+      padding: 1rem;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      font-size: 0.875rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      resize: vertical;
+      transition: border-color 0.2s ease;
+    }
+
+    .jwt-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .jwt-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .status-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+    }
+
+    .status-indicator.valid {
+      background: var(--success);
+    }
+
+    .status-indicator.invalid {
+      background: var(--error);
+    }
+
+    .status-indicator.expired {
+      background: var(--error);
+    }
+
+    .status-indicator.expiring-soon {
+      background: var(--warning);
+    }
+
+    .status-indicator.not-expired {
+      background: var(--success);
+    }
+
+    .status-label {
+      color: var(--text-secondary);
+    }
+
+    .status-value {
+      font-weight: 500;
+    }
+
+    .status-value.valid {
+      color: var(--success);
+    }
+
+    .status-value.invalid {
+      color: var(--error);
+    }
+
+    .status-value.expired {
+      color: var(--error);
+    }
+
+    .status-value.expiring-soon {
+      color: var(--warning);
+    }
+
+    .status-value.not-expired {
+      color: var(--success);
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .panel {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .panel-content {
+      padding: 1rem;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+      min-height: 150px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .panel-content.empty {
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-style: italic;
+    }
+
+    .btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--bg-secondary);
+      border-color: var(--accent);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn.small {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .json-key {
+      color: var(--json-key);
+    }
+
+    .json-string {
+      color: var(--json-string);
+    }
+
+    .json-number {
+      color: var(--json-number);
+    }
+
+    .json-boolean {
+      color: var(--json-boolean);
+    }
+
+    .json-null {
+      color: var(--json-null);
+    }
+
+    .timestamp-info {
+      display: block;
+      margin-top: 0.25rem;
+      padding-left: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .claim-row {
+      position: relative;
+    }
+
+    .claim-tooltip {
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-secondary);
+      z-index: 10;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .claim-row:hover .claim-tooltip {
+      display: block;
+    }
+
+    .signature-warning {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(255, 149, 0, 0.1);
+      border: 1px solid var(--warning);
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--warning);
+    }
+
+    .signature-warning svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--warning);
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .signature-verified {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(52, 199, 89, 0.1);
+      border: 1px solid var(--success);
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--success);
+    }
+
+    .signature-verified svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--success);
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .signature-invalid {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      background: rgba(255, 59, 48, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 6px;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--error);
+    }
+
+    .signature-invalid svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--error);
+      fill: none;
+      flex-shrink: 0;
+    }
+
+    .options-row {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .option-item input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .view-toggle {
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .view-toggle-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: none;
+      background: var(--bg);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .view-toggle-btn:not(:last-child) {
+      border-right: 1px solid var(--border);
+    }
+
+    .view-toggle-btn.active {
+      background: var(--accent);
+      color: white;
+    }
+
+    .view-toggle-btn:hover:not(.active) {
+      background: var(--bg-secondary);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .copy-feedback {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text);
+      color: var(--bg);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
+    }
+
+    .claims-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .claims-table th,
+    .claims-table td {
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .claims-table th {
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: var(--bg);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .claims-table td {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+    }
+
+    .claims-table td.claim-name {
+      color: var(--json-key);
+      font-weight: 500;
+    }
+
+    .claims-table td.claim-value {
+      word-break: break-all;
+    }
+
+    .claims-table td.claim-description {
+      font-family: inherit;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+    }
+
+    .claims-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .timestamp-detail {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin-top: 0.25rem;
+    }
+
+    .verification-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .verification-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .secret-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      font-size: 0.8rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      transition: border-color 0.2s ease;
+    }
+
+    .secret-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .secret-input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .verification-hint {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .tool-name {
+        font-size: 1.1rem;
+      }
+
+      .header-right {
+        gap: 1rem;
+      }
+
+      .back-link {
+        font-size: 0.8rem;
+      }
+
+      .panels {
+        grid-template-columns: 1fr;
+      }
+
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .options-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="tool-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+          <circle cx="8" cy="8" r="3"/>
+          <line x1="10.5" y1="10.5" x2="18" y2="18"/>
+          <line x1="15" y1="18" x2="18" y2="15"/>
+        </svg>
+      </div>
+      <div class="tool-name">JWT Decoder</div>
+    </div>
+    <div class="header-right">
+      <a href="https://wbtl.app" class="back-link">wbtl.app</a>
+      <div class="theme-toggle">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <div class="toggle-switch" onclick="toggleTheme()" role="button" tabindex="0" aria-label="Toggle dark mode"></div>
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="content">
+      <div class="input-section">
+        <div class="input-label">
+          <span>Paste your JWT token</span>
+          <div class="input-actions">
+            <button class="btn small" onclick="loadExample()">Example</button>
+            <button class="btn small" onclick="clearInput()">Clear</button>
+          </div>
+        </div>
+        <textarea
+          id="jwtInput"
+          class="jwt-input"
+          placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+          oninput="decodeToken()"
+        ></textarea>
+      </div>
+
+      <div class="options-row">
+        <label class="option-item">
+          <input type="checkbox" id="prettyPrint" checked onchange="savePreferences(); decodeToken()">
+          Pretty print
+        </label>
+        <label class="option-item">
+          <input type="checkbox" id="showRaw" onchange="decodeToken()">
+          Raw Base64
+        </label>
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="jsonViewBtn" onclick="setView('json')">JSON</button>
+          <button class="view-toggle-btn" id="tableViewBtn" onclick="setView('table')">Table</button>
+        </div>
+      </div>
+
+      <div id="statusBar" class="status-bar hidden">
+        <div class="status-item">
+          <div id="validIndicator" class="status-indicator"></div>
+          <span class="status-label">Status:</span>
+          <span id="validStatus" class="status-value">-</span>
+        </div>
+        <div class="status-item">
+          <div id="expiryIndicator" class="status-indicator"></div>
+          <span class="status-label">Expiry:</span>
+          <span id="expiryStatus" class="status-value">-</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Algorithm:</span>
+          <span id="algorithmStatus" class="status-value">-</span>
+        </div>
+      </div>
+
+      <div id="panels" class="panels hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Header</span>
+            <div class="panel-actions">
+              <button class="btn small" onclick="copySection('header')">Copy</button>
+            </div>
+          </div>
+          <div id="headerContent" class="panel-content empty">Decoded header will appear here</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Payload</span>
+            <div class="panel-actions">
+              <button class="btn small" onclick="copySection('payload')">Copy</button>
+            </div>
+          </div>
+          <div id="payloadContent" class="panel-content empty">Decoded payload will appear here</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">Signature</span>
+            <div class="panel-actions">
+              <button class="btn small" onclick="copySection('signature')">Copy</button>
+            </div>
+          </div>
+          <div id="signatureContent" class="panel-content">
+            <div id="signatureStatus" class="signature-warning">
+              <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span>Signature not verified. Enter secret/key below to verify.</span>
+            </div>
+            <div id="signatureValue" class="empty">Signature will appear here</div>
+            <div class="verification-section">
+              <label class="verification-label">Verify Signature</label>
+              <input
+                type="text"
+                id="secretInput"
+                class="secret-input"
+                placeholder="Enter secret key (for HS256/HS384/HS512)"
+                oninput="verifySignature()"
+              >
+              <div class="verification-hint">For HMAC algorithms (HS256, HS384, HS512), enter the secret string. RSA/EC verification coming soon.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="copyFeedback" class="copy-feedback">Copied to clipboard!</div>
+
+  <script>
+    const standardClaims = {
+      iss: 'Issuer - Who created the token',
+      sub: 'Subject - Who the token is about',
+      aud: 'Audience - Who the token is for',
+      exp: 'Expiration Time - When the token expires',
+      nbf: 'Not Before - Token not valid before this time',
+      iat: 'Issued At - When the token was created',
+      jti: 'JWT ID - Unique identifier for the token',
+      name: 'Full name of the user',
+      email: 'Email address of the user',
+      picture: 'URL of the user profile picture',
+      azp: 'Authorized party - OAuth client ID',
+      scope: 'OAuth scopes granted',
+      roles: 'User roles or permissions',
+      typ: 'Token type',
+      alg: 'Algorithm used for signing'
+    };
+
+    const timestampClaims = ['exp', 'nbf', 'iat'];
+
+    let decodedData = {
+      header: null,
+      payload: null,
+      signature: null,
+      rawHeader: null,
+      rawPayload: null,
+      rawToken: null
+    };
+
+    let currentView = 'json';
+
+    // Example JWT with a known secret ("your-256-bit-secret")
+    const exampleJWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTAwMDAwMDAwfQ.NN4qBmSwOVLEMpvH5XKqLCTLdNvYqD6gVqxpwW1hKqo';
+    const exampleSecret = 'your-256-bit-secret';
+
+    function getSystemTheme() {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function getStoredTheme() {
+      return localStorage.getItem('wbtl-theme');
+    }
+
+    function setTheme(theme) {
+      if (theme === 'system') {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.removeItem('wbtl-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('wbtl-theme', theme);
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const system = getSystemTheme();
+
+      if (!current) {
+        setTheme(system === 'dark' ? 'light' : 'dark');
+      } else {
+        if (current === system) {
+          setTheme(current === 'dark' ? 'light' : 'dark');
+        } else {
+          setTheme('system');
+        }
+      }
+    }
+
+    function loadPreferences() {
+      const prettyPrint = localStorage.getItem('jwt-pretty-print');
+      if (prettyPrint !== null) {
+        document.getElementById('prettyPrint').checked = prettyPrint === 'true';
+      }
+      const savedView = localStorage.getItem('jwt-view');
+      if (savedView) {
+        setView(savedView, false);
+      }
+    }
+
+    function savePreferences() {
+      localStorage.setItem('jwt-pretty-print', document.getElementById('prettyPrint').checked);
+    }
+
+    function setView(view, save = true) {
+      currentView = view;
+      document.getElementById('jsonViewBtn').classList.toggle('active', view === 'json');
+      document.getElementById('tableViewBtn').classList.toggle('active', view === 'table');
+      if (save) {
+        localStorage.setItem('jwt-view', view);
+      }
+      decodeToken();
+    }
+
+    function base64UrlDecode(str) {
+      let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+      const padding = base64.length % 4;
+      if (padding) {
+        base64 += '='.repeat(4 - padding);
+      }
+      const decoded = atob(base64);
+      const bytes = new Uint8Array(decoded.length);
+      for (let i = 0; i < decoded.length; i++) {
+        bytes[i] = decoded.charCodeAt(i);
+      }
+      return new TextDecoder().decode(bytes);
+    }
+
+    function base64UrlEncode(arrayBuffer) {
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function decodeJWT(token) {
+      const parts = token.trim().split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid JWT format: must have 3 parts separated by dots');
+      }
+
+      const decode = (str, part) => {
+        try {
+          return JSON.parse(base64UrlDecode(str));
+        } catch (e) {
+          throw new Error(`Invalid ${part}: not valid base64url encoded JSON`);
+        }
+      };
+
+      return {
+        header: decode(parts[0], 'header'),
+        payload: decode(parts[1], 'payload'),
+        signature: parts[2],
+        rawHeader: parts[0],
+        rawPayload: parts[1],
+        rawToken: token.trim()
+      };
+    }
+
+    function formatTimestamp(unixSeconds) {
+      const date = new Date(unixSeconds * 1000);
+      return {
+        iso: date.toISOString(),
+        local: date.toLocaleString(),
+        relative: getRelativeTime(date)
+      };
+    }
+
+    function getRelativeTime(date) {
+      const now = new Date();
+      const diff = date - now;
+      const absDiff = Math.abs(diff);
+      const isPast = diff < 0;
+
+      const seconds = Math.floor(absDiff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+
+      let result;
+      if (days > 0) {
+        result = `${days} day${days > 1 ? 's' : ''}`;
+        const remainingHours = hours % 24;
+        if (remainingHours > 0) {
+          result += ` ${remainingHours} hour${remainingHours > 1 ? 's' : ''}`;
+        }
+      } else if (hours > 0) {
+        result = `${hours} hour${hours > 1 ? 's' : ''}`;
+        const remainingMinutes = minutes % 60;
+        if (remainingMinutes > 0) {
+          result += ` ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}`;
+        }
+      } else if (minutes > 0) {
+        result = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+      } else {
+        result = `${seconds} second${seconds !== 1 ? 's' : ''}`;
+      }
+
+      return isPast ? `${result} ago` : `in ${result}`;
+    }
+
+    function isExpired(exp) {
+      return exp && (exp * 1000) < Date.now();
+    }
+
+    function isExpiringSoon(exp) {
+      if (!exp) return false;
+      const diff = (exp * 1000) - Date.now();
+      return diff > 0 && diff < (60 * 60 * 1000);
+    }
+
+    function syntaxHighlight(json, addTimestampInfo = false, isPayload = false) {
+      const prettyPrint = document.getElementById('prettyPrint').checked;
+      const str = prettyPrint ? JSON.stringify(json, null, 2) : JSON.stringify(json);
+
+      let result = '';
+      let inString = false;
+      let currentKey = '';
+      let collectingKey = false;
+      let i = 0;
+
+      while (i < str.length) {
+        const char = str[i];
+
+        if (char === '"' && str[i - 1] !== '\\') {
+          if (!inString) {
+            inString = true;
+            const colonIndex = str.indexOf(':', i);
+            const nextQuoteIndex = str.indexOf('"', i + 1);
+            if (colonIndex !== -1 && (nextQuoteIndex === -1 || colonIndex < nextQuoteIndex || colonIndex === nextQuoteIndex + 1)) {
+              collectingKey = true;
+              currentKey = '';
+            }
+          } else {
+            inString = false;
+            if (collectingKey) {
+              collectingKey = false;
+              const tooltip = standardClaims[currentKey] ? `<span class="claim-tooltip">${standardClaims[currentKey]}</span>` : '';
+              result += `<span class="claim-row"><span class="json-key">"${currentKey}"</span>${tooltip}</span>`;
+              i++;
+              continue;
+            }
+          }
+        }
+
+        if (inString && collectingKey) {
+          currentKey += char;
+          i++;
+          continue;
+        }
+
+        if (inString) {
+          if (i === str.indexOf('"', i)) {
+            let endQuote = str.indexOf('"', i + 1);
+            while (endQuote !== -1 && str[endQuote - 1] === '\\') {
+              endQuote = str.indexOf('"', endQuote + 1);
+            }
+            const stringContent = str.substring(i, endQuote + 1);
+            result += `<span class="json-string">${escapeHtml(stringContent)}</span>`;
+            i = endQuote + 1;
+            continue;
+          }
+        }
+
+        if (!inString) {
+          if (/[\d.-]/.test(char) && (i === 0 || /[:\s,\[]/.test(str[i - 1]))) {
+            let numStr = '';
+            let j = i;
+            while (j < str.length && /[\d.eE+-]/.test(str[j])) {
+              numStr += str[j];
+              j++;
+            }
+            if (!isNaN(Number(numStr))) {
+              result += `<span class="json-number">${numStr}</span>`;
+
+              if (isPayload && addTimestampInfo && timestampClaims.includes(currentKey)) {
+                const ts = formatTimestamp(Number(numStr));
+                result += `<span class="timestamp-info">${ts.local} (${ts.relative})</span>`;
+              }
+
+              i = j;
+              continue;
+            }
+          }
+
+          if (str.substring(i, i + 4) === 'true') {
+            result += `<span class="json-boolean">true</span>`;
+            i += 4;
+            continue;
+          }
+
+          if (str.substring(i, i + 5) === 'false') {
+            result += `<span class="json-boolean">false</span>`;
+            i += 5;
+            continue;
+          }
+
+          if (str.substring(i, i + 4) === 'null') {
+            result += `<span class="json-null">null</span>`;
+            i += 4;
+            continue;
+          }
+        }
+
+        result += escapeHtml(char);
+        i++;
+      }
+
+      return result;
+    }
+
+    function renderClaimsTable(json, isPayload = false) {
+      let html = '<table class="claims-table"><thead><tr><th>Claim</th><th>Value</th><th>Description</th></tr></thead><tbody>';
+
+      for (const [key, value] of Object.entries(json)) {
+        const description = standardClaims[key] || '';
+        let displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+        let timestampHtml = '';
+
+        if (isPayload && timestampClaims.includes(key) && typeof value === 'number') {
+          const ts = formatTimestamp(value);
+          timestampHtml = `<div class="timestamp-detail">${ts.local} (${ts.relative})</div>`;
+        }
+
+        html += `<tr>
+          <td class="claim-name">${escapeHtml(key)}</td>
+          <td class="claim-value">${escapeHtml(displayValue)}${timestampHtml}</td>
+          <td class="claim-description">${escapeHtml(description)}</td>
+        </tr>`;
+      }
+
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function loadExample() {
+      document.getElementById('jwtInput').value = exampleJWT;
+      document.getElementById('secretInput').value = exampleSecret;
+      decodeToken();
+      verifySignature();
+    }
+
+    function decodeToken() {
+      const input = document.getElementById('jwtInput').value.trim();
+      const statusBar = document.getElementById('statusBar');
+      const panels = document.getElementById('panels');
+      const showRaw = document.getElementById('showRaw').checked;
+
+      if (!input) {
+        statusBar.classList.add('hidden');
+        panels.classList.add('hidden');
+        decodedData = { header: null, payload: null, signature: null, rawHeader: null, rawPayload: null, rawToken: null };
+        return;
+      }
+
+      try {
+        const decoded = decodeJWT(input);
+        decodedData = decoded;
+
+        statusBar.classList.remove('hidden');
+        panels.classList.remove('hidden');
+
+        document.getElementById('validIndicator').className = 'status-indicator valid';
+        document.getElementById('validStatus').className = 'status-value valid';
+        document.getElementById('validStatus').textContent = 'Valid JWT';
+
+        const exp = decoded.payload.exp;
+        const expiryIndicator = document.getElementById('expiryIndicator');
+        const expiryStatus = document.getElementById('expiryStatus');
+
+        if (exp) {
+          if (isExpired(exp)) {
+            expiryIndicator.className = 'status-indicator expired';
+            expiryStatus.className = 'status-value expired';
+            expiryStatus.textContent = `Expired ${getRelativeTime(new Date(exp * 1000))}`;
+          } else if (isExpiringSoon(exp)) {
+            expiryIndicator.className = 'status-indicator expiring-soon';
+            expiryStatus.className = 'status-value expiring-soon';
+            expiryStatus.textContent = `Expires ${getRelativeTime(new Date(exp * 1000))}`;
+          } else {
+            expiryIndicator.className = 'status-indicator not-expired';
+            expiryStatus.className = 'status-value not-expired';
+            expiryStatus.textContent = `Expires ${getRelativeTime(new Date(exp * 1000))}`;
+          }
+        } else {
+          expiryIndicator.className = 'status-indicator';
+          expiryStatus.className = 'status-value';
+          expiryStatus.textContent = 'No expiration';
+        }
+
+        document.getElementById('algorithmStatus').textContent = decoded.header.alg || 'Unknown';
+
+        const headerContent = document.getElementById('headerContent');
+        const payloadContent = document.getElementById('payloadContent');
+        const signatureValue = document.getElementById('signatureValue');
+
+        if (showRaw) {
+          headerContent.innerHTML = escapeHtml(decoded.rawHeader);
+          headerContent.classList.remove('empty');
+          payloadContent.innerHTML = escapeHtml(decoded.rawPayload);
+          payloadContent.classList.remove('empty');
+        } else if (currentView === 'table') {
+          headerContent.innerHTML = renderClaimsTable(decoded.header, false);
+          headerContent.classList.remove('empty');
+          payloadContent.innerHTML = renderClaimsTable(decoded.payload, true);
+          payloadContent.classList.remove('empty');
+        } else {
+          headerContent.innerHTML = syntaxHighlight(decoded.header, false, false);
+          headerContent.classList.remove('empty');
+          payloadContent.innerHTML = syntaxHighlight(decoded.payload, true, true);
+          payloadContent.classList.remove('empty');
+        }
+
+        signatureValue.textContent = decoded.signature;
+        signatureValue.classList.remove('empty');
+
+        // Reset signature status and re-verify if secret is present
+        resetSignatureStatus();
+        if (document.getElementById('secretInput').value.trim()) {
+          verifySignature();
+        }
+
+      } catch (error) {
+        statusBar.classList.remove('hidden');
+        panels.classList.add('hidden');
+
+        document.getElementById('validIndicator').className = 'status-indicator invalid';
+        document.getElementById('validStatus').className = 'status-value invalid';
+        document.getElementById('validStatus').textContent = error.message;
+
+        document.getElementById('expiryIndicator').className = 'status-indicator';
+        document.getElementById('expiryStatus').className = 'status-value';
+        document.getElementById('expiryStatus').textContent = '-';
+
+        document.getElementById('algorithmStatus').textContent = '-';
+
+        decodedData = { header: null, payload: null, signature: null, rawHeader: null, rawPayload: null, rawToken: null };
+      }
+    }
+
+    function resetSignatureStatus() {
+      const statusEl = document.getElementById('signatureStatus');
+      statusEl.className = 'signature-warning';
+      statusEl.innerHTML = `
+        <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Signature not verified. Enter secret/key below to verify.</span>
+      `;
+    }
+
+    async function verifySignature() {
+      const secret = document.getElementById('secretInput').value;
+      const statusEl = document.getElementById('signatureStatus');
+
+      if (!secret || !decodedData.header || !decodedData.rawToken) {
+        resetSignatureStatus();
+        return;
+      }
+
+      const alg = decodedData.header.alg;
+
+      // Only support HMAC algorithms for now
+      if (!['HS256', 'HS384', 'HS512'].includes(alg)) {
+        statusEl.className = 'signature-warning';
+        statusEl.innerHTML = `
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Algorithm ${alg} not supported for verification. Only HS256/HS384/HS512 are supported.</span>
+        `;
+        return;
+      }
+
+      try {
+        const hashAlg = {
+          'HS256': 'SHA-256',
+          'HS384': 'SHA-384',
+          'HS512': 'SHA-512'
+        }[alg];
+
+        const encoder = new TextEncoder();
+        const keyData = encoder.encode(secret);
+        const message = encoder.encode(`${decodedData.rawHeader}.${decodedData.rawPayload}`);
+
+        const key = await crypto.subtle.importKey(
+          'raw',
+          keyData,
+          { name: 'HMAC', hash: hashAlg },
+          false,
+          ['sign']
+        );
+
+        const signature = await crypto.subtle.sign('HMAC', key, message);
+        const computedSig = base64UrlEncode(signature);
+
+        if (computedSig === decodedData.signature) {
+          statusEl.className = 'signature-verified';
+          statusEl.innerHTML = `
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <span>Signature verified! The token is valid and was signed with this secret.</span>
+          `;
+        } else {
+          statusEl.className = 'signature-invalid';
+          statusEl.innerHTML = `
+            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="15" y1="9" x2="9" y2="15"/>
+              <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+            <span>Invalid signature! The secret does not match.</span>
+          `;
+        }
+      } catch (error) {
+        statusEl.className = 'signature-invalid';
+        statusEl.innerHTML = `
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+          <span>Verification error: ${escapeHtml(error.message)}</span>
+        `;
+      }
+    }
+
+    function clearInput() {
+      document.getElementById('jwtInput').value = '';
+      document.getElementById('secretInput').value = '';
+      decodeToken();
+    }
+
+    function copySection(section) {
+      let text = '';
+      const prettyPrint = document.getElementById('prettyPrint').checked;
+      const showRaw = document.getElementById('showRaw').checked;
+
+      if (section === 'header' && decodedData.header) {
+        text = showRaw ? decodedData.rawHeader : (prettyPrint ? JSON.stringify(decodedData.header, null, 2) : JSON.stringify(decodedData.header));
+      } else if (section === 'payload' && decodedData.payload) {
+        text = showRaw ? decodedData.rawPayload : (prettyPrint ? JSON.stringify(decodedData.payload, null, 2) : JSON.stringify(decodedData.payload));
+      } else if (section === 'signature' && decodedData.signature) {
+        text = decodedData.signature;
+      }
+
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          showCopyFeedback();
+        });
+      }
+    }
+
+    function showCopyFeedback() {
+      const feedback = document.getElementById('copyFeedback');
+      feedback.classList.add('show');
+      setTimeout(() => {
+        feedback.classList.remove('show');
+      }, 2000);
+    }
+
+    // Initialize
+    (function() {
+      const stored = getStoredTheme();
+      if (stored) {
+        setTheme(stored);
+      }
+      loadPreferences();
+    })();
+
+    document.querySelector('.toggle-switch').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleTheme();
+      }
+    });
+  </script>
+</body>
+</html>
